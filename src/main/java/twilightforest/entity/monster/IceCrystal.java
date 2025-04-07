@@ -19,12 +19,8 @@ public class IceCrystal extends BaseIceMob {
 	private int crystalAge;
 	private int maxCrystalAge = -1;
 
-	public IceCrystal(Level worldIn) {
-		super(TFEntities.ICE_CRYSTAL.get(), worldIn);
-	}
-
-	public IceCrystal(EntityType<? extends IceCrystal> type, Level world) {
-		super(type, world);
+	public IceCrystal(EntityType<? extends IceCrystal> type, Level level) {
+		super(type, level);
 	}
 
 	@Override
@@ -40,9 +36,9 @@ public class IceCrystal extends BaseIceMob {
 
 	public static AttributeSupplier.Builder registerAttributes() {
 		return Monster.createMonsterAttributes()
-				.add(Attributes.MAX_HEALTH, 10.0D)
-				.add(Attributes.MOVEMENT_SPEED, 0.23D)
-				.add(Attributes.ATTACK_DAMAGE, 5.0D);
+			.add(Attributes.MAX_HEALTH, 10.0D)
+			.add(Attributes.MOVEMENT_SPEED, 0.23D)
+			.add(Attributes.ATTACK_DAMAGE, 5.0D);
 	}
 
 	@Override

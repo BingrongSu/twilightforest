@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "cookingtime": 100,
+  "experience": 1.0,
+  "group": "ironwood_ingot",
+  "ingredient": "twilightforest:raw_ironwood",
+  "result": {
+    "count": 1,
+    "id": "twilightforest:ironwood_ingot"
+  }
+}

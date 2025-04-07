@@ -6,39 +6,53 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.resources.ResourceLocation;
 import twilightforest.TwilightForestMod;
-import twilightforest.client.model.TFModelLayers;
 import twilightforest.client.model.entity.HydraNeckModel;
-import twilightforest.entity.boss.HydraHeadContainer;
+import twilightforest.client.state.HydraNeckRenderState;
 import twilightforest.entity.boss.HydraNeck;
 
-public class HydraNeckRenderer extends TFPartRenderer<HydraNeck, HydraNeckModel> {
+public class HydraNeckRenderer extends TFPartRenderer<HydraNeck, HydraNeckRenderState, HydraNeckModel> {
 
-	private static final ResourceLocation textureLoc = TwilightForestMod.getModelTexture("hydra4.png");
+	private static final ResourceLocation TEXTURE = TwilightForestMod.getModelTexture("hydra4.png");
 
-	public HydraNeckRenderer(EntityRendererProvider.Context manager) {
-		super(manager, new HydraNeckModel(manager.bakeLayer(TFModelLayers.NEW_HYDRA_NECK)));
+	public HydraNeckRenderer(EntityRendererProvider.Context context, HydraNeckModel model) {
+		super(context, model);
 	}
 
 	@Override
-	public void render(HydraNeck entityIn, float entityYaw, float partialTicks, PoseStack matrixStackIn, MultiBufferSource bufferIn, int light) {
-		HydraHeadContainer headCon = HydraHeadRenderer.getHeadObject(entityIn.head);
-		if (headCon != null)
-			if (headCon.shouldRenderHead()) {
-				float yawDiff = entityIn.getYRot() - entityIn.yRotO;
-				if (yawDiff > 180) {
-					yawDiff -= 360;
-				} else if (yawDiff < -180) {
-					yawDiff += 360;
-				}
-				float yaw2 = entityIn.yRotO + yawDiff * partialTicks;
-
-				matrixStackIn.mulPose(Axis.YN.rotationDegrees(yaw2 + 180));
-				super.render(entityIn, entityYaw, partialTicks, matrixStackIn, bufferIn, light);
+	public void render(HydraNeckRenderState state, PoseStack stack, MultiBufferSource buffer, int light) {
+		if (state.active) {
+			float yawDiff = state.yRot - state.yRotO;
+			if (yawDiff > 180) {
+				yawDiff -= 360;
+			} else if (yawDiff < -180) {
+				yawDiff += 360;
 			}
+			float yaw2 = state.yRotO + yawDiff * state.partialTick;
+
+			stack.mulPose(Axis.YN.rotationDegrees(yaw2 + 180));
+			super.render(state, stack, buffer, light);
+		}
 	}
 
 	@Override
-	public ResourceLocation getTextureLocation(HydraNeck entity) {
-		return textureLoc;
+	public HydraNeckRenderState createRenderState() {
+		return new HydraNeckRenderState();
+	}
+
+	@Override
+	public void extractRenderState(HydraNeck entity, HydraNeckRenderState state, float partialTick) {
+		super.extractRenderState(entity, state, partialTick);
+		var container = HydraHeadRenderer.getHeadObject(entity.head);
+		state.active = container == null || container.isActive();
+	}
+
+	@Override
+	protected float getFlipDegrees() {
+		return 0.0F;
+	}
+
+	@Override
+	public ResourceLocation getTextureLocation(HydraNeckRenderState state) {
+		return TEXTURE;
 	}
 }

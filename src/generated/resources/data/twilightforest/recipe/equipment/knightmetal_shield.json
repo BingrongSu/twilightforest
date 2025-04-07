@@ -1,0 +1,18 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "#": "#twilightforest:towerwood",
+    "-": "#c:ingots/knightmetal",
+    "o": "twilightforest:knightmetal_ring"
+  },
+  "pattern": [
+    "-#",
+    "-o",
+    "-#"
+  ],
+  "result": {
+    "count": 1,
+    "id": "twilightforest:knightmetal_shield"
+  }
+}

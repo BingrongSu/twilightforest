@@ -31,10 +31,10 @@ public class RedcapShyGoal extends RedcapBaseGoal {
 		LivingEntity attackTarget = this.redcap.getTarget();
 
 		if (attackTarget == null
-				|| !this.redcap.isShy()
-				|| attackTarget.distanceTo(this.redcap) > maxDistance
-				|| attackTarget.distanceTo(this.redcap) < minDistance
-				|| !isTargetLookingAtMe(attackTarget)) {
+			|| !this.redcap.isShy()
+			|| attackTarget.distanceTo(this.redcap) > maxDistance
+			|| attackTarget.distanceTo(this.redcap) < minDistance
+			|| !isTargetLookingAtMe(attackTarget)) {
 			return false;
 		} else {
 			this.entityTarget = attackTarget;
@@ -89,7 +89,7 @@ public class RedcapShyGoal extends RedcapBaseGoal {
 		float rangle = (float) (Math.atan2(vecz, vecx));
 
 		// add a little, so he circles
-		rangle += rotation;
+		rangle += (float) rotation;
 
 		// figure out where we're headed from the target angle
 		double dx = Mth.cos(rangle) * radius;

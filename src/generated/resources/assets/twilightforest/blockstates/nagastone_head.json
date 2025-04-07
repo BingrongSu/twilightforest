@@ -5,7 +5,8 @@
       "y": 90
     },
     "facing=north": {
-      "model": "twilightforest:block/nagastone_head"
+      "model": "twilightforest:block/nagastone_head",
+      "y": 0
     },
     "facing=south": {
       "model": "twilightforest:block/nagastone_head",

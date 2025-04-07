@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
@@ -30,6 +31,7 @@ import twilightforest.entity.ai.control.NoClipMoveControl;
 import twilightforest.entity.ai.goal.SimplifiedAttackGoal;
 import twilightforest.init.TFDamageTypes;
 import twilightforest.init.TFSounds;
+import twilightforest.util.entities.EntityUtil;
 
 import java.util.EnumSet;
 import java.util.Optional;
@@ -56,15 +58,15 @@ public class Wraith extends FlyingMob implements Enemy, EnforcedHomePoint {
 
 	public static AttributeSupplier.Builder registerAttributes() {
 		return Mob.createMobAttributes()
-				.add(Attributes.MAX_HEALTH, 20.0D)
-				.add(Attributes.MOVEMENT_SPEED, 0.5D)
-				.add(Attributes.ATTACK_DAMAGE, 5.0D);
+			.add(Attributes.MAX_HEALTH, 20.0D)
+			.add(Attributes.MOVEMENT_SPEED, 0.5D)
+			.add(Attributes.ATTACK_DAMAGE, 5.0D);
 	}
 
 	@Override
-	protected void defineSynchedData() {
-		super.defineSynchedData();
-		this.getEntityData().define(HOME_POINT, Optional.empty());
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+		super.defineSynchedData(builder);
+		builder.define(HOME_POINT, Optional.empty());
 	}
 
 	@Override
@@ -78,8 +80,8 @@ public class Wraith extends FlyingMob implements Enemy, EnforcedHomePoint {
 	}
 
 	@Override
-	public boolean hurt(DamageSource source, float amount) {
-		if (super.hurt(source, amount)) {
+	public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
+		if (super.hurtServer(level, source, amount)) {
 			Entity entity = source.getEntity();
 			if (this.getVehicle() == entity || this.getPassengers().contains(entity)) {
 				return true;
@@ -94,9 +96,8 @@ public class Wraith extends FlyingMob implements Enemy, EnforcedHomePoint {
 	}
 
 	@Override
-	public boolean doHurtTarget(Entity entity) {
-		entity.hurt(TFDamageTypes.getEntityDamageSource(this.level(), TFDamageTypes.HAUNT, this), (float) this.getAttributeValue(Attributes.ATTACK_DAMAGE));
-		return super.doHurtTarget(entity);
+	public boolean doHurtTarget(ServerLevel level, Entity entity) {
+		return EntityUtil.properlyApplyCustomDamageSource(level, this, entity, TFDamageTypes.getEntityDamageSource(this.level(), TFDamageTypes.HAUNT, this), null);
 	}
 
 	@Override
@@ -119,14 +120,14 @@ public class Wraith extends FlyingMob implements Enemy, EnforcedHomePoint {
 		return TFSounds.WRAITH_DEATH.get();
 	}
 
-	public static boolean checkMonsterSpawnRules(EntityType<? extends Wraith> entity, ServerLevelAccessor world, MobSpawnType reason, BlockPos pos, RandomSource random) {
+	public static boolean checkMonsterSpawnRules(EntityType<? extends Wraith> entity, ServerLevelAccessor world, EntitySpawnReason reason, BlockPos pos, RandomSource random) {
 		return world.getDifficulty() != Difficulty.PEACEFUL && Monster.isDarkEnoughToSpawn(world, pos, random) && checkMobSpawnRules(entity, world, reason, pos, random);
 	}
 
 	@Override
-	public SpawnGroupData finalizeSpawn(ServerLevelAccessor accessor, DifficultyInstance difficulty, MobSpawnType type, @Nullable SpawnGroupData data, @Nullable CompoundTag tag) {
-		if (type == MobSpawnType.STRUCTURE || type == MobSpawnType.SPAWNER) this.setRestrictionPoint(GlobalPos.of(accessor.getLevel().dimension(), this.blockPosition()));
-		return super.finalizeSpawn(accessor, difficulty, type, data, tag);
+	public SpawnGroupData finalizeSpawn(ServerLevelAccessor accessor, DifficultyInstance difficulty, EntitySpawnReason type, @Nullable SpawnGroupData data) {
+		if (type == EntitySpawnReason.STRUCTURE || type == EntitySpawnReason.SPAWNER) this.setRestrictionPoint(GlobalPos.of(accessor.getLevel().dimension(), this.blockPosition()));
+		return super.finalizeSpawn(accessor, difficulty, type, data);
 	}
 
 	@Override
@@ -264,13 +265,14 @@ public class Wraith extends FlyingMob implements Enemy, EnforcedHomePoint {
 			this.setFlags(EnumSet.of(Goal.Flag.MOVE));
 		}
 
+		@Override
 		public boolean canUse() {
 			if (this.mob.isMobWithinHomeArea(this.mob) || this.mob.getTarget() != null) {
 				return false;
 			} else {
 				BlockPos pos = this.mob.getRestrictionPoint().pos()
-						.relative(Direction.getRandom(this.mob.getRandom()))
-						.offset(this.mob.getRandom().nextInt(5), this.mob.getRandom().nextInt(5), this.mob.getRandom().nextInt(5));
+					.relative(Direction.getRandom(this.mob.getRandom()))
+					.offset(this.mob.getRandom().nextInt(5), this.mob.getRandom().nextInt(5), this.mob.getRandom().nextInt(5));
 				if (!this.mob.level().isLoaded(pos)) {
 					return false;
 				} else {
@@ -282,10 +284,12 @@ public class Wraith extends FlyingMob implements Enemy, EnforcedHomePoint {
 			}
 		}
 
+		@Override
 		public boolean canContinueToUse() {
 			return false;
 		}
 
+		@Override
 		public void start() {
 			this.mob.getMoveControl().setWantedPosition(this.wantedX, this.wantedY, this.wantedZ, this.speedModifier);
 		}

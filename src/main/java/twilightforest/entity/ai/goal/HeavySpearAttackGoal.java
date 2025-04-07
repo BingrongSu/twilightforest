@@ -1,5 +1,6 @@
 package twilightforest.entity.ai.goal;
 
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.ai.goal.Goal;
 import twilightforest.entity.monster.UpperGoblinKnight;
@@ -18,7 +19,7 @@ public class HeavySpearAttackGoal extends Goal {
 	@Override
 	public void tick() {
 		if (this.entity.heavySpearTimer == 25) {
-			this.entity.landHeavySpearAttack();
+			this.entity.landHeavySpearAttack((ServerLevel) this.entity.level());
 		}
 	}
 

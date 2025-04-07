@@ -1,12 +1,13 @@
 package twilightforest.entity.ai.goal;
 
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.Vec3;
-import twilightforest.init.TFSounds;
-import twilightforest.init.TFEntities;
-import twilightforest.entity.projectile.IceBomb;
 import twilightforest.entity.boss.AlphaYeti;
+import twilightforest.entity.projectile.IceBomb;
+import twilightforest.init.TFEntities;
+import twilightforest.init.TFSounds;
 
 import java.util.EnumSet;
 
@@ -44,7 +45,7 @@ public class YetiRampageGoal extends Goal {
 		this.currentDuration = this.tantrumDuration;
 		this.yeti.setRampaging(true);
 		this.yeti.playSound(TFSounds.ALPHA_YETI_ROAR.get(), 4F, 0.5F + yeti.getRandom().nextFloat() * 0.5F);
-		this.yeti.gameEvent(GameEvent.ENTITY_ROAR);
+		this.yeti.gameEvent(GameEvent.ENTITY_ACTION);
 	}
 
 	/**
@@ -62,20 +63,20 @@ public class YetiRampageGoal extends Goal {
 	public void tick() {
 		this.currentDuration--;
 
-        if (this.yeti.getTarget() != null) {
+		if (this.yeti.getTarget() != null) {
 			this.yeti.getLookControl().setLookAt(this.yeti.getTarget(), 10.0F, this.yeti.getMaxHeadXRot());
 		}
 
 		if (this.yeti.onGround()) {
-            this.yeti.setDeltaMovement(0, 0.4D, 0);
+			this.yeti.setDeltaMovement(0, 0.4D, 0);
 			this.yeti.gameEvent(GameEvent.HIT_GROUND);
 		}
 
-		this.yeti.destroyBlocksInAABB(this.yeti.getBoundingBox().inflate(1, 2, 1).move(0, 2, 0));
+		this.yeti.destroyBlocksInAABB(getServerLevel(this.yeti), this.yeti.getBoundingBox().inflate(1, 2, 1).move(0, 2, 0));
 
 		// regular falling blocks, twice a second
 		if (this.currentDuration % 10 == 0) {
-			this.yeti.makeRandomBlockFall(30, 80);
+			this.yeti.makeRandomBlockFall(getServerLevel(this.yeti), 30, 80);
 		}
 
 		// blocks target players, one every second
@@ -85,7 +86,7 @@ public class YetiRampageGoal extends Goal {
 
 		// blocks that fall close to the yeti, twice a second near the end of the rampage
 		if (this.currentDuration < 40 && this.currentDuration % 10 == 0) {
-			this.yeti.makeRandomBlockFall(15, 40);
+			this.yeti.makeRandomBlockFall(getServerLevel(this.yeti), 15, 40);
 		}
 
 		if (this.currentDuration % 20 == 0) {

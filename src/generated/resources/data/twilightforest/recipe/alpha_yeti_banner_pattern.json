@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "#c:paper",
+    "twilightforest:alpha_yeti_trophy"
+  ],
+  "result": {
+    "count": 1,
+    "id": "twilightforest:alpha_yeti_banner_pattern"
+  }
+}

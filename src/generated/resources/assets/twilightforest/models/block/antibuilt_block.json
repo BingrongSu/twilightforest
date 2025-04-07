@@ -1,31 +1,31 @@
 {
-  "parent": "minecraft:block/block",
+  "parent": "minecraft:block/cube_all",
   "elements": [
     {
       "faces": {
         "down": {
           "cullface": "down",
-          "texture": "#bottom"
+          "texture": "#all"
         },
         "east": {
           "cullface": "east",
-          "texture": "#east"
+          "texture": "#all"
         },
         "north": {
           "cullface": "north",
-          "texture": "#north"
+          "texture": "#all"
         },
         "south": {
           "cullface": "south",
-          "texture": "#south"
+          "texture": "#all"
         },
         "up": {
           "cullface": "up",
-          "texture": "#top"
+          "texture": "#all"
         },
         "west": {
           "cullface": "west",
-          "texture": "#west"
+          "texture": "#all"
         }
       },
       "from": [
@@ -33,7 +33,6 @@
         0,
         0
       ],
-      "shade": false,
       "to": [
         16,
         16,
@@ -44,57 +43,51 @@
       "faces": {
         "down": {
           "cullface": "down",
-          "forge_data": {
+          "neoforge_data": {
             "block_light": 10,
             "sky_light": 10
           },
-          "texture": "#bottom2",
-          "tintindex": 0
+          "texture": "#all_2"
         },
         "east": {
           "cullface": "east",
-          "forge_data": {
+          "neoforge_data": {
             "block_light": 10,
             "sky_light": 10
           },
-          "texture": "#east2",
-          "tintindex": 0
+          "texture": "#all_2"
         },
         "north": {
           "cullface": "north",
-          "forge_data": {
+          "neoforge_data": {
             "block_light": 10,
             "sky_light": 10
           },
-          "texture": "#north2",
-          "tintindex": 0
+          "texture": "#all_2"
         },
         "south": {
           "cullface": "south",
-          "forge_data": {
+          "neoforge_data": {
             "block_light": 10,
             "sky_light": 10
           },
-          "texture": "#south2",
-          "tintindex": 0
+          "texture": "#all_2"
         },
         "up": {
           "cullface": "up",
-          "forge_data": {
+          "neoforge_data": {
             "block_light": 10,
             "sky_light": 10
           },
-          "texture": "#top2",
-          "tintindex": 0
+          "texture": "#all_2"
         },
         "west": {
           "cullface": "west",
-          "forge_data": {
+          "neoforge_data": {
             "block_light": 10,
             "sky_light": 10
           },
-          "texture": "#west2",
-          "tintindex": 0
+          "texture": "#all_2"
         }
       },
       "from": [
@@ -111,20 +104,7 @@
   ],
   "render_type": "minecraft:cutout",
   "textures": {
-    "all": "twilightforest:block/towerdev_antibuilt",
-    "all2": "twilightforest:block/tower_device_level_2/towerdev_antibuilt_1",
-    "bottom": "#all",
-    "bottom2": "#all2",
-    "east": "#all",
-    "east2": "#all2",
-    "north": "#all",
-    "north2": "#all2",
-    "particle": "#bottom",
-    "south": "#all",
-    "south2": "#all2",
-    "top": "#all",
-    "top2": "#all2",
-    "west": "#all",
-    "west2": "#all2"
+    "all": "twilightforest:block/antibuilt_block",
+    "all_2": "twilightforest:block/antibuilt_block_layer_1"
   }
 }

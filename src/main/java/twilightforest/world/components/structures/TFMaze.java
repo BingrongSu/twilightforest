@@ -5,14 +5,18 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.StructureManager;
 import net.minecraft.world.level.WorldGenLevel;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.StructurePiece;
+import org.jetbrains.annotations.Nullable;
 import twilightforest.TwilightForestMod;
 import twilightforest.init.TFBlocks;
 import twilightforest.init.TFConfiguredFeatures;
+
+import java.util.stream.IntStream;
 
 /**
  * This is a maze of cells and walls.
@@ -35,6 +39,7 @@ public class TFMaze {
 
 	public int type; // 1-3 = various sizes hollow hills
 
+	@Nullable
 	public StructurePiece.BlockSelector wallBlocks;
 
 	public BlockState wallBlockState;
@@ -72,7 +77,9 @@ public class TFMaze {
 		wallBlockState = TFBlocks.CUT_MAZESTONE.get().defaultBlockState();
 		rootBlockState = TFBlocks.MAZESTONE.get().defaultBlockState();
 		torchBlockState = Blocks.TORCH.defaultBlockState();
-		pillarBlockState = null;
+		pillarBlockState = Blocks.AIR.defaultBlockState();
+		headBlockState = Blocks.AIR.defaultBlockState();
+		doorBlockState = Blocks.AIR.defaultBlockState();
 
 		torchRarity = 0.75F;
 		doorRarity = 0F;
@@ -90,7 +97,7 @@ public class TFMaze {
 	/**
 	 * Gets the value from a cell in the maze
 	 */
-	private int getCell(int x, int z) {
+	public int getCell(int x, int z) {
 		return getRaw(x * 2 + 1, z * 2 + 1);
 	}
 
@@ -170,6 +177,19 @@ public class TFMaze {
 		} else {
 			return storage[rawz * rawWidth + rawx];
 		}
+	}
+
+	public boolean allCellsNonZero() {
+		return IntStream.range(0, width)
+			.allMatch(x -> IntStream.range(0, depth)
+				.allMatch(z -> getCell(x, z) != 0));
+	}
+
+
+	public void resetCells() {
+		IntStream.range(0, width)
+			.forEach(x -> IntStream.range(0, depth)
+				.forEach(z -> putCell(x, z, 0)));
 	}
 
 	/**
@@ -322,7 +342,7 @@ public class TFMaze {
 	 * Puts a wall block in the world, at the specified world coordinates.
 	 */
 	private void putWallBlock(WorldGenLevel world, int x, int y, int z) {
-		world.setBlock(new BlockPos(x, y, z), wallBlockState, 2);
+		world.setBlock(new BlockPos(x, y, z), wallBlockState, Block.UPDATE_CLIENTS);
 	}
 
 	/**
@@ -363,7 +383,7 @@ public class TFMaze {
 
 		// only place it if we're actually generating the chunk the tree is in (or at least the middle of the tree)
 		if (sbb.isInside(pos)) {
-			if (!world.registryAccess().registryOrThrow(Registries.CONFIGURED_FEATURE).get(TFConfiguredFeatures.CANOPY_TREE).place(world, generator, world.getRandom(), pos)) {
+			if (!world.registryAccess().lookupOrThrow(Registries.CONFIGURED_FEATURE).getValueOrThrow(TFConfiguredFeatures.CANOPY_TREE).place(world, generator, world.getRandom(), pos)) {
 				makeWallThing(world, y, component, sbb, x, z, 0, 0);
 			}
 		}
@@ -398,7 +418,7 @@ public class TFMaze {
 	 */
 	public boolean shouldPillar(int rx, int rz) {
 		// if the pillar block is not defined, no
-		if (pillarBlockState == null) {
+		if (pillarBlockState.isAir()) {
 			return false;
 		}
 
@@ -488,7 +508,6 @@ public class TFMaze {
 
 	/**
 	 * Mark the cell as visited.  If we have any unvisited neighbors, pick one randomly, carve the wall between them, then call this function on that neighbor.
-	 *
 	 */
 	public void rbGen(int sx, int sz) {
 		// mark cell as visited

@@ -2,36 +2,35 @@ package twilightforest.client.model.block.giantblock;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.client.model.generators.CustomLoaderBuilder;
-import net.minecraftforge.client.model.generators.ModelBuilder;
-import net.minecraftforge.common.data.ExistingFileHelper;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.client.model.generators.template.CustomLoaderBuilder;
 import twilightforest.TwilightForestMod;
 
-public class GiantBlockBuilder<T extends ModelBuilder<T>> extends CustomLoaderBuilder<T> {
+public class GiantBlockBuilder extends CustomLoaderBuilder {
 
-	public static <T extends ModelBuilder<T>> GiantBlockBuilder<T> begin(T parent, ExistingFileHelper helper) {
-		return new GiantBlockBuilder<>(parent, helper);
+	public static GiantBlockBuilder begin() {
+		return new GiantBlockBuilder();
 	}
 
 	private ResourceLocation parentBlock;
 
-	protected GiantBlockBuilder(T parent, ExistingFileHelper helper) {
-		super(TwilightForestMod.prefix("giant_block"), parent, helper);
+	protected GiantBlockBuilder() {
+		super(TwilightForestMod.prefix("giant_block"), false);
 	}
 
-	public GiantBlockBuilder<T> parentBlock(Block block) {
+	public GiantBlockBuilder parentBlock(Block block) {
 		Preconditions.checkNotNull(block, "parent block must not be null");
-		this.parentBlock = ForgeRegistries.BLOCKS.getKey(block);
+		this.parentBlock = BuiltInRegistries.BLOCK.getKey(block);
 		return this;
 	}
 
 	@Override
-	public T end() {
-		Preconditions.checkNotNull(this.parentBlock, "giant block must have a parent block");
-		return super.end();
+	protected CustomLoaderBuilder copyInternal() {
+		GiantBlockBuilder builder = new GiantBlockBuilder();
+		builder.parentBlock = parentBlock;
+		return builder;
 	}
 
 	@Override

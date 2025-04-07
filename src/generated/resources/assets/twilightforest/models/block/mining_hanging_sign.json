@@ -1,6 +1,5 @@
 {
-  "parent": "minecraft:builtin/entity",
   "textures": {
-    "particle": "twilightforest:block/stripped_mining_log"
+    "particle": "twilightforest:block/stripped_mining_log_side"
   }
 }

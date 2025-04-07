@@ -6,7 +6,10 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.Difficulty;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.EntitySpawnReason;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Monster;
@@ -40,13 +43,8 @@ public class CarminiteGhastling extends CarminiteGhastguard {
 
 	public static AttributeSupplier.Builder registerAttributes() {
 		return CarminiteGhastguard.registerAttributes()
-				.add(Attributes.MAX_HEALTH, 10)
-				.add(Attributes.FOLLOW_RANGE, 16.0D);
-	}
-
-	@Override
-	protected float getStandingEyeHeight(Pose pose, EntityDimensions size) {
-		return 0.5F;
+			.add(Attributes.MAX_HEALTH, 10)
+			.add(Attributes.FOLLOW_RANGE, 16.0D);
 	}
 
 	@Override
@@ -93,8 +91,8 @@ public class CarminiteGhastling extends CarminiteGhastguard {
 	}
 
 	//This does not factor into whether the entity is a Minion or not. However, since it is spawned via MOB_SUMMONED, it will always spawn if that is the SpawnReason
-	public static boolean canSpawnHere(EntityType<CarminiteGhastling> entity, ServerLevelAccessor world, MobSpawnType reason, BlockPos pos, RandomSource random) {
-		return world.getDifficulty() != Difficulty.PEACEFUL && (reason == MobSpawnType.MOB_SUMMONED || Monster.isDarkEnoughToSpawn(world, pos, random)) && checkMobSpawnRules(entity, world, reason, pos, random);
+	public static boolean checkGhastlingSpawnRules(EntityType<CarminiteGhastling> entity, ServerLevelAccessor world, EntitySpawnReason reason, BlockPos pos, RandomSource random) {
+		return world.getDifficulty() != Difficulty.PEACEFUL && (reason == EntitySpawnReason.MOB_SUMMONED || Monster.isDarkEnoughToSpawn(world, pos, random)) && checkMobSpawnRules(entity, world, reason, pos, random);
 	}
 
 	public void makeBossMinion() {

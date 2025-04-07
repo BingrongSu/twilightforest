@@ -1,21 +1,19 @@
 package twilightforest.entity.boss;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
 import twilightforest.TwilightForestMod;
 import twilightforest.entity.TFPart;
+import twilightforest.init.TFSounds;
 
 import java.util.List;
 
@@ -28,22 +26,22 @@ public class NagaSegment extends TFPart<Naga> {
 	public NagaSegment(Naga naga) {
 		super(naga);
 		this.setPos(naga.getX(), naga.getY(), naga.getZ());
-	}
-
-	@Override
-	protected void defineSynchedData() {
 		this.deactivate();
 	}
 
 	@Override
-	@OnlyIn(Dist.CLIENT)
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
+
+	}
+
+	@Override
 	public ResourceLocation renderer() {
 		return RENDERER;
 	}
 
 	@Override
-	public boolean hurt(DamageSource src, float damage) {
-		return !this.isInvisible() && this.getParent().hurt(src, damage * 2.0F / 3.0F);
+	public boolean hurtServer(ServerLevel level, DamageSource src, float damage) {
+		return !this.isInvisible() && this.getParent().hurtServer(level, src, damage * 2.0F / 3.0F);
 	}
 
 	@Override
@@ -73,18 +71,10 @@ public class NagaSegment extends TFPart<Naga> {
 		if (this.deathCounter > 0) {
 			this.deathCounter--;
 			if (this.deathCounter <= 0) {
-				Vec3 pos = this.position();
-				float width = this.getBbWidth();
-				float height = this.getBbHeight();
-				for (int k = 0; k < 20; k++) {
-					this.level().addParticle(this.random.nextBoolean() ? ParticleTypes.EXPLOSION : ParticleTypes.EXPLOSION_EMITTER,
-							(pos.x() + this.random.nextFloat() * width * 2.0F) - width,
-							pos.y() + this.random.nextFloat() * height,
-							(pos.z() + this.random.nextFloat() * width * 2.0F) - width,
-							this.random.nextGaussian() * 0.02D, this.random.nextGaussian() * 0.02D, this.random.nextGaussian() * 0.02D);
-				}
-
-				this.getParent().deathTime = 0;
+				Naga naga = this.getParent();
+				naga.makePoofAt(this.position());
+				naga.playSound(TFSounds.NAGA_HURT.get(), 0.25F, (naga.getVoicePitch() * 0.75F) + (0.5F * naga.getRandom().nextFloat()));
+				naga.deathTime = 0;
 				this.deactivate();
 			}
 		}
@@ -104,7 +94,7 @@ public class NagaSegment extends TFPart<Naga> {
 		entity.push(this);
 
 		// attack anything that's not us
-		if (entity instanceof LivingEntity && !(entity instanceof Naga) && !this.getParent().isDazed()) {
+		if (entity instanceof LivingEntity && !(entity instanceof Naga) && !this.getParent().isDazed() && !this.getParent().isDeadOrDying()) {
 			int attackStrength = 2;
 
 			// get rid of nearby deer & look impressive
@@ -112,7 +102,9 @@ public class NagaSegment extends TFPart<Naga> {
 				attackStrength *= 3;
 			}
 
-			entity.hurt(entity.level().damageSources().mobAttack(this.getParent()), attackStrength);
+			if (this.level() instanceof ServerLevel level) {
+				entity.hurtServer(level, level.damageSources().mobAttack(this.getParent()), attackStrength);
+			}
 		}
 	}
 
@@ -141,12 +133,7 @@ public class NagaSegment extends TFPart<Naga> {
 	}
 
 	@Override
-	public boolean canChangeDimensions() {
+	public boolean canUsePortal(boolean force) {
 		return false;
-	}
-
-	@Override
-	public float getStepHeight() {
-		return 2.0F;
 	}
 }

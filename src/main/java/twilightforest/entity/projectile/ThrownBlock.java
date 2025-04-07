@@ -10,6 +10,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityEvent;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.Level;
@@ -19,11 +23,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
+import org.jetbrains.annotations.Nullable;
 import twilightforest.entity.monster.Troll;
 import twilightforest.init.TFDamageTypes;
 import twilightforest.init.TFEntities;
-
-import org.jetbrains.annotations.Nullable;
 
 public class ThrownBlock extends TFThrowable {
 
@@ -54,10 +57,10 @@ public class ThrownBlock extends TFThrowable {
 
 	@Override
 	public void handleEntityEvent(byte id) {
-		if (id == 3) {
+		if (id == EntityEvent.DEATH) {
 			ParticleOptions particle = new BlockParticleOption(ParticleTypes.BLOCK, this.state);
 			for (int i = 0; i < 20; i++) {
-				this.level().addParticle(particle, false, this.getX(), this.getY(), this.getZ(), this.random.nextGaussian() * 0.05D, this.random.nextDouble() * 0.2D, this.random.nextGaussian() * 0.05D);
+				this.level().addParticle(particle, this.getX(), this.getY(), this.getZ(), this.random.nextGaussian() * 0.05D, this.random.nextDouble() * 0.2D, this.random.nextGaussian() * 0.05D);
 			}
 		} else {
 			super.handleEntityEvent(id);
@@ -65,11 +68,14 @@ public class ThrownBlock extends TFThrowable {
 	}
 
 	@Override
+	protected boolean canHitEntity(Entity target) {
+		return !(target instanceof Troll) && super.canHitEntity(target);
+	}
+
+	@Override
 	protected void onHitEntity(EntityHitResult result) {
 		super.onHitEntity(result);
-		if (result.getEntity() instanceof LivingEntity living && !(living instanceof Troll) && !this.level().isClientSide()) {
-			living.hurt(TFDamageTypes.getDamageSource(this.level(), TFDamageTypes.THROWN_BLOCK), 6);
-
+		if (result.getEntity() instanceof LivingEntity living && this.level() instanceof ServerLevel level && living.hurtServer(level, level.damageSources().source(TFDamageTypes.THROWN_BLOCK), 6)) {
 			this.level().broadcastEntityEvent(this, (byte) 3);
 			this.discard();
 		}
@@ -90,8 +96,8 @@ public class ThrownBlock extends TFThrowable {
 	}
 
 	@Override
-	public Packet<ClientGamePacketListener> getAddEntityPacket() {
-		return new ClientboundAddEntityPacket(this, Block.getId(this.getBlockState()));
+	public Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entity) {
+		return new ClientboundAddEntityPacket(this, entity, Block.getId(this.getBlockState()));
 	}
 
 	@Override

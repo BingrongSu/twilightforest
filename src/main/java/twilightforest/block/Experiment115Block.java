@@ -11,13 +11,11 @@ import net.minecraft.stats.Stats;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraft.world.level.BlockGetter;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.level.*;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
@@ -30,7 +28,7 @@ import net.minecraft.world.phys.shapes.BooleanOp;
 import net.minecraft.world.phys.shapes.CollisionContext;
 import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import twilightforest.init.TFItems;
 import twilightforest.init.TFStats;
 
@@ -52,34 +50,34 @@ public class Experiment115Block extends Block {
 	@Override
 	public VoxelShape getShape(BlockState state, BlockGetter getter, BlockPos pos, CollisionContext context) {
 		return switch (state.getValue(BITES_TAKEN)) {
-			default -> FULL_SHAPE;
 			case 2, 3 -> THREE_QUARTER_SHAPE;
 			case 4, 5 -> HALF_SHAPE;
 			case 6, 7 -> QUARTER_SHAPE;
+			default -> FULL_SHAPE;
 		};
 	}
 
 	@Override
-	public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+	protected InteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
 		int bitesTaken = state.getValue(BITES_TAKEN);
-		ItemStack stack = player.getItemInHand(hand);
 
 		if (!player.isSecondaryUseActive()) {
-			if (bitesTaken > 0 && stack.is(TFItems.EXPERIMENT_115.get())) {
+			if (stack.is(TFItems.EXPERIMENT_115.get())) {
+				if (bitesTaken == 0) return InteractionResult.FAIL;
 				level.setBlockAndUpdate(pos, state.setValue(BITES_TAKEN, bitesTaken - 1));
-				level.playSound(null, pos, state.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
-				if (!player.isCreative()) stack.shrink(1);
+				level.playSound(null, pos, state.getSoundType(level, pos, player).getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
+				stack.consume(1, player);
 				if (player instanceof ServerPlayer)
 					CriteriaTriggers.PLACED_BLOCK.trigger((ServerPlayer) player, pos, stack);
-				return InteractionResult.sidedSuccess(level.isClientSide());
+				return InteractionResult.SUCCESS;
 			} else if (!state.getValue(REGENERATE) && bitesTaken == 0 && stack.is(Items.REDSTONE)) {
 				level.setBlockAndUpdate(pos, state.setValue(REGENERATE, true));
-				level.playSound(null, pos, state.getSoundType().getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
-				if (!player.isCreative()) stack.shrink(1);
+				level.playSound(null, pos, state.getSoundType(level, pos, player).getPlaceSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
+				stack.consume(1, player);
 				if (player instanceof ServerPlayer) {
 					player.awardStat(Stats.ITEM_USED.get(Items.REDSTONE));
 				}
-				return InteractionResult.sidedSuccess(level.isClientSide());
+				return InteractionResult.SUCCESS;
 			}
 		} else {
 			if (!state.getValue(REGENERATE)) {
@@ -91,22 +89,23 @@ public class Experiment115Block extends Block {
 				player.playSound(SoundEvents.ITEM_PICKUP, 0.5F, 1.0F);
 				if (!player.isCreative())
 					ItemHandlerHelper.giveItemToPlayer(player, new ItemStack(TFItems.EXPERIMENT_115.get()));
-				return InteractionResult.sidedSuccess(level.isClientSide());
+				return InteractionResult.SUCCESS;
 			}
 		}
-		return this.eatCake(level, pos, state, player);
+		return InteractionResult.TRY_WITH_EMPTY_HAND;
 	}
 
-	private InteractionResult eatCake(Level level, BlockPos pos, BlockState state, Player player) {
+	@Override
+	protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hit) {
 		if (!player.canEat(false)) return InteractionResult.PASS;
 		else {
 			player.awardStat(TFStats.E115_SLICES_EATEN.get());
 			player.getFoodData().eat(4, 0.3F);
-			level.playSound(null, pos, SoundEvents.GENERIC_EAT, SoundSource.PLAYERS, 0.5F, level.random.nextFloat() * 0.1F + 0.9F);
+			level.playSound(null, pos, SoundEvents.GENERIC_EAT.value(), SoundSource.PLAYERS, 0.5F, level.random.nextFloat() * 0.1F + 0.9F);
 			int i = state.getValue(BITES_TAKEN);
 
 			if (i < 7) {
-				level.setBlock(pos, state.setValue(BITES_TAKEN, i + 1), 3);
+				level.setBlock(pos, state.setValue(BITES_TAKEN, i + 1), Block.UPDATE_ALL);
 			} else {
 				level.removeBlock(pos, false);
 			}
@@ -116,7 +115,7 @@ public class Experiment115Block extends Block {
 				player.awardStat(Stats.ITEM_USED.get(TFItems.EXPERIMENT_115.get()));
 			}
 
-			return InteractionResult.sidedSuccess(level.isClientSide());
+			return InteractionResult.SUCCESS;
 		}
 	}
 
@@ -128,37 +127,41 @@ public class Experiment115Block extends Block {
 	}
 
 	@Override
+	@SuppressWarnings("deprecation")
 	public boolean canSurvive(BlockState state, LevelReader reader, BlockPos pos) {
 		return reader.getBlockState(pos.below()).isSolid();
 	}
 
 	@Override
-	public BlockState updateShape(BlockState state, Direction facing, BlockState facingState, LevelAccessor level, BlockPos currentPos, BlockPos facingPos) {
-		return facing == Direction.DOWN && !state.canSurvive(level, currentPos) ? Blocks.AIR.defaultBlockState() : super.updateShape(state, facing, facingState, level, currentPos, facingPos);
+	protected BlockState updateShape(BlockState state, LevelReader reader, ScheduledTickAccess access, BlockPos pos, Direction direction, BlockPos facingPos, BlockState facingState, RandomSource random) {
+		return direction == Direction.DOWN && !state.canSurvive(reader, pos) ? Blocks.AIR.defaultBlockState() : super.updateShape(state, reader, access, pos, direction, facingPos, facingState, random);
 	}
 
 	@Override
 	protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-		super.createBlockStateDefinition(builder);
 		builder.add(BITES_TAKEN, REGENERATE);
 	}
 
 	@Override
+	@SuppressWarnings("deprecation") // Fine to override
 	public int getAnalogOutputSignal(BlockState state, Level level, BlockPos pos) {
 		return (8 - state.getValue(BITES_TAKEN)) + (state.getValue(REGENERATE) ? 7 : 0);
 	}
 
 	@Override
+	@SuppressWarnings("deprecation") // Fine to override
 	public boolean hasAnalogOutputSignal(BlockState state) {
 		return true;
 	}
 
 	@Override
+	@SuppressWarnings("deprecation") // Fine to override
 	public boolean isSignalSource(BlockState state) {
 		return state.getValue(REGENERATE);
 	}
 
 	@Override
+	@SuppressWarnings("deprecation") // Fine to override
 	public int getSignal(BlockState state, BlockGetter blockAccess, BlockPos pos, Direction side) {
 		return state.getValue(REGENERATE) ? 15 - (state.getValue(BITES_TAKEN) * 2) : 0;
 	}

@@ -1,321 +1,193 @@
 package twilightforest;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.datafixers.util.Pair;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectListIterator;
 import net.minecraft.client.Camera;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.AbstractClientPlayer;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.entity.EntityRenderer;
-import net.minecraft.client.renderer.entity.EntityRendererProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.sounds.Music;
-import net.minecraft.sounds.Musics;
-import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.WorldGenRegion;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.AttributeModifier;
-import net.minecraft.world.entity.decoration.ItemFrame;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.decoration.LeashFenceKnotEntity;
-import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.MapItem;
-import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.ChunkPos;
-import net.minecraft.world.level.ClipContext;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelReader;
+import net.minecraft.world.item.*;
+import net.minecraft.world.level.*;
 import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.chunk.ChunkAccess;
+import net.minecraft.world.level.chunk.LevelChunk;
+import net.minecraft.world.level.levelgen.DensityFunction;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.RandomState;
+import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.levelgen.structure.pieces.PiecesContainer;
 import net.minecraft.world.level.levelgen.structure.pieces.StructurePieceSerializationContext;
-import net.minecraft.world.level.saveddata.maps.MapItemSavedData;
-import net.minecraft.world.phys.BlockHitResult;
-import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.ForgeMod;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.common.util.TriState;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
+import tamaized.beanification.Autowired;
+import twilightforest.init.TFDataAttachments;
+import twilightforest.util.ArmorUtil;
+import twilightforest.util.multiparts.MultipartEntityUtil;
 import twilightforest.block.CloudBlock;
 import twilightforest.block.WroughtIronFenceBlock;
-import twilightforest.client.TFClientSetup;
-import twilightforest.events.ToolEvents;
+import twilightforest.client.FoliageColorHandler;
+import twilightforest.config.TFConfig;
 import twilightforest.init.TFBlocks;
-import twilightforest.init.TFDimensionSettings;
-import twilightforest.entity.TFPart;
-import twilightforest.init.TFItems;
-import twilightforest.item.GiantItem;
-import twilightforest.network.TFPacketHandler;
-import twilightforest.network.UpdateTFMultipartPacket;
+import twilightforest.init.TFDataComponents;
+import twilightforest.init.custom.ChunkBlanketProcessors;
+import twilightforest.util.WorldUtil;
+import twilightforest.world.components.structures.CustomDensitySource;
 import twilightforest.world.components.structures.util.CustomStructureData;
-import twilightforest.world.registration.TFGenerationSettings;
 
-import org.jetbrains.annotations.Nullable;
+import java.util.Iterator;
 
-import java.util.*;
-
+// TODO: Think about reorganizing each group into their own class or subclass of ASMHooks
 @SuppressWarnings({"JavadocReference", "unused", "RedundantSuppression", "deprecation"})
 public class ASMHooks {
 
+	@Autowired
+	private static ArmorUtil armorUtil;
+
+	@Autowired
+	private static MultipartEntityUtil multipartEntityUtil;
+
+	@Autowired
+	private static FoliageColorHandler foliageColorHandler;
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// armor
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.level.levelgen.WorldOptions#WorldOptions(long, boolean, boolean, Optional)} <br>
-	 * [BEFORE FIRST PUTFIELD]
+	 * {@link twilightforest.asm.transformers.armor.ArmorVisibilityRenderingTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.entity.LivingEntity#getVisibilityPercent(Entity)}
 	 */
-	public static long seed(long seed) {
-		TFDimensionSettings.seed = seed;
-		return seed;
+	public static float modifyArmorVisibility(float o, LivingEntity entity) {
+		return o - armorUtil.getShroudedArmorPercentage(entity);
 	}
 
 	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.gui.MapRenderer.MapInstance#draw(PoseStack, MultiBufferSource, boolean, int)}<br>
-	 * [BEFORE FIRST ISTORE]
+	 * {@link twilightforest.asm.transformers.armor.CancelArmorRenderingTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.client.renderer.entity.layers.HumanoidArmorLayer#renderArmorPiece(PoseStack, MultiBufferSource, LivingEntity, EquipmentSlot, int, HumanoidModel, float, float, float, float, float, float)}
 	 */
-	public static void mapRenderContext(PoseStack stack, MultiBufferSource buffer, int light) {
-		TFMagicMapData.TFMapDecoration.RenderContext.stack = stack;
-		TFMagicMapData.TFMapDecoration.RenderContext.buffer = buffer;
-		TFMagicMapData.TFMapDecoration.RenderContext.light = light;
-	}
-
-	private static boolean isOurMap(ItemStack stack) {
-		return stack.is(TFItems.FILLED_MAGIC_MAP.get()) || stack.is(TFItems.FILLED_MAZE_MAP.get()) || stack.is(TFItems.FILLED_ORE_MAP.get());
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.renderer.ItemInHandRenderer#renderArmWithItem(AbstractClientPlayer, float, float, InteractionHand, float, ItemStack, float, PoseStack, MultiBufferSource, int)} <br>
-	 * [AFTER INST AFTER FIRST GETSTATIC {@link net.minecraft.world.item.Items#FILLED_MAP}]
-	 * <p></p>
-	 * Injection Point:<br>
-	 * {@link ItemFrame#getFramedMapId()} <br>
-	 * [BEFORE FIRST IFEQ]
-	 */
-	public static boolean shouldMapRender(boolean o, ItemStack stack) {
-		return o || isOurMap(stack);
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.renderer.ItemInHandRenderer#renderMap(PoseStack, MultiBufferSource, int, ItemStack)}<br>
-	 * [BEFORE FIRST ASTORE 6]
-	 * <p></p>
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.item.MapItem#appendHoverText(ItemStack, Level, List, TooltipFlag)}<br>
-	 * [AFTER INVOKESTATIC {@link net.minecraft.world.item.MapItem#getSavedData(Integer, Level)}]
-	 */
-	@Nullable
-	public static MapItemSavedData renderMapData(@Nullable MapItemSavedData o, ItemStack stack, @Nullable Level level) {
-		return isOurMap(stack) && level != null ? MapItem.getSavedData(stack, level) : o;
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.sounds.MusicManager#tick()}<br>
-	 * [AFTER FIRST INVOKEVIRTUAL]
-	 */
-	@OnlyIn(Dist.CLIENT)
-	public static Music music(Music music) {
-		if (Minecraft.getInstance().level != null && Minecraft.getInstance().player != null && (music == Musics.CREATIVE || music == Musics.UNDER_WATER) && TFGenerationSettings.isTwilightWorldOnClient(Minecraft.getInstance().level))
-			return Minecraft.getInstance().level.getBiomeManager().getNoiseBiomeAtPosition(Minecraft.getInstance().player.blockPosition()).value().getBackgroundMusic().orElse(Musics.GAME);
-		return music;
-	}
-
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.server.level.ServerEntity#sendDirtyEntityData}<br>
-	 * [AFTER GETFIELD]
-	 */
-	public static Entity updateMultiparts(Entity entity) {
-		if (entity.isMultipartEntity())
-			TFPacketHandler.CHANNEL.send(PacketDistributor.TRACKING_ENTITY.with(() -> entity), new UpdateTFMultipartPacket(entity));
-		return entity;
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.renderer.entity.EntityRenderDispatcher#getRenderer(Entity)}<br>
-	 * [BEFORE LAST ARETURN]
-	 */
-	@Nullable
-	@OnlyIn(Dist.CLIENT)
-	public static EntityRenderer<?> getMultipartRenderer(@Nullable EntityRenderer<?> renderer, Entity entity) {
-		if(entity instanceof TFPart<?>)
-			return TFClientSetup.BakedMultiPartRenderers.lookup(((TFPart<?>) entity).renderer());
-		return renderer;
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.renderer.entity.EntityRenderDispatcher#onResourceManagerReload(ResourceManager)}<br>
-	 * [AFTER FIRST INVOKESPECIAL]
-	 */
-	@OnlyIn(Dist.CLIENT)
-	public static EntityRendererProvider.Context bakeMultipartRenders(EntityRendererProvider.Context context) {
-		TFClientSetup.BakedMultiPartRenderers.bakeMultiPartRenderers(context);
-		return context;
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.renderer.LevelRenderer#renderLevel(PoseStack, float, long, boolean, Camera, GameRenderer, LightTexture, Matrix4f)}<br>
-	 * [AFTER {@link net.minecraft.client.multiplayer.ClientLevel#entitiesForRendering}]
-	 */
-	public static Iterable<Entity> renderMultiparts(Iterable<Entity> iter) {
-		List<Entity> list = new ArrayList<>();
-		iter.forEach(entity -> {
-			list.add(entity);
-			if(entity.isMultipartEntity() && entity.getParts() != null) {
-				for (PartEntity<?> part : entity.getParts()) {
-					if(part instanceof TFPart)
-						list.add(part);
-				}
-			}
-		});
-		return list;
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.renderer.BiomeColors#FOLIAGE_COLOR_RESOLVER}<br>
-	 * [BEFORE IRETURN]
-	 */
-	@OnlyIn(Dist.CLIENT)
-	public static int foliage(int o, Biome biome, double x, double z) {
-		return FoliageColorHandler.get(o, biome, x, z);
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.level.levelgen.structure.StructureStart#loadStaticStart(StructurePieceSerializationContext, CompoundTag, long)} <br>
-	 * [AFTER INVOKESPECIAL {@link net.minecraft.world.level.levelgen.structure.StructureStart#StructureStart(Structure, ChunkPos, int, PiecesContainer)}]
-	 */
-	public static StructureStart conquered(StructureStart start, PiecesContainer piecesContainer, CompoundTag nbt) {
-		if (start.getStructure() instanceof CustomStructureData s)
-			return s.forDeserialization(start.getStructure(), start.getChunkPos(), start.getReferences(), piecesContainer, nbt);
-		return start;
-	}
-
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.client.player.LocalPlayer#rideTick()} <br>
-	 * [AFTER FIRST INVOKESPECIAL]
-	 */
-	public static boolean mountFix(boolean o, boolean wantsToStopRiding, boolean isPassenger) {
-		if (wantsToStopRiding && isPassenger)
+	public static boolean cancelArmorRendering(boolean o, ItemStack stack) {
+		if (o && stack.get(TFDataComponents.EMPERORS_CLOTH) != null) {
 			return false;
+		}
 		return o;
 	}
 
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// beardifier
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.item.WrittenBookItem#getName(net.minecraft.world.item.ItemStack)}<br>
-	 * [BEFORE ARETURN]
+	 * {@link twilightforest.asm.transformers.beardifier.InitializeCustomBeardifierFieldsDuringForStructuresInChunkTransformer}<p/>
+	 *
+	 * Injection point:<br/>
+	 * {@link net.minecraft.world.level.levelgen.NoiseBasedChunkGenerator#createNoiseChunk(ChunkAccess, StructureManager, Blender, RandomState)}
 	 */
-	public static Component book(Component component, CompoundTag tag) {
-		if (tag.contains(TwilightForestMod.ID + ":book")) {
+	public static ObjectListIterator<DensityFunction> gatherCustomTerrain(StructureManager structureManager, ChunkPos chunkPos) {
+		ObjectArrayList<DensityFunction> customStructureTerraforms = new ObjectArrayList<>(10);
+
+		for (StructureStart structureStart : structureManager.startsForStructure(chunkPos, s -> s instanceof CustomDensitySource))
+			if (structureStart.getStructure() instanceof CustomDensitySource customDensitySource)
+				customStructureTerraforms.add(customDensitySource.getStructureTerraformer(chunkPos, structureStart));
+
+		return customStructureTerraforms.iterator();
+	}
+
+	/**
+	 * {@link twilightforest.asm.transformers.beardifier.BeardifierComputeTransformer}<p/>
+	 *
+	 * Injection point:<br/>
+	 * {@link net.minecraft.world.level.levelgen.Beardifier#compute(DensityFunction.FunctionContext)}
+	 */
+	public static double getCustomDensity(double o, DensityFunction.FunctionContext context, @Nullable ObjectListIterator<DensityFunction> customDensities) {
+		if (customDensities == null)
+			return o;
+
+		double newDensity = 0;
+
+		while (customDensities.hasNext()) {
+			newDensity += customDensities.next().compute(context);
+		}
+		customDensities.back(Integer.MAX_VALUE);
+
+		return o + newDensity;
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// book
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.book.ModifyWrittenBookNameTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.item.WrittenBookItem#getName(net.minecraft.world.item.ItemStack)}
+	 */
+	public static Component modifyWrittenBookName(Component component, ItemStack stack) {
+		if (stack.has(TFDataComponents.TRANSLATABLE_BOOK)) {
 			return Component.translatable(component.getString());
 		} else return component;
 	}
 
-	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.item.Item#getPlayerPOVHitResult(Level, Player, ClipContext.Fluid)}<br>
-	 * [BEFORE ARETURN]
-	 */
-	public static BlockHitResult reach(BlockHitResult o, Level level, Player player, ClipContext.Fluid fluidMode) {
-		InteractionHand hand = ToolEvents.INTERACTION_HAND;
-		if (hand != null) {
-			BlockHitResult hitResult = interactionTooFar(level, player, hand, fluidMode);
-			if (hitResult != null) {
-				return hitResult;
-			}
-		}
-		return o;
-	}
-
-	@Nullable
-	private static BlockHitResult interactionTooFar(Level level, Player player, InteractionHand hand, ClipContext.Fluid fluidMode) {
-		ItemStack heldStack = player.getItemInHand(hand);
-		if (ToolEvents.hasGiantItemInOneHand(player) && !(heldStack.getItem() instanceof GiantItem) && hand == InteractionHand.OFF_HAND) {
-			UUID uuidForOppositeHand = GiantItem.GIANT_REACH_MODIFIER;
-			AttributeInstance reachDistance = player.getAttribute(ForgeMod.BLOCK_REACH.get());
-			if (reachDistance != null) {
-				AttributeModifier giantModifier = reachDistance.getModifier(uuidForOppositeHand);
-				if (giantModifier != null) {
-					reachDistance.removeModifier(giantModifier);
-					double reach = player.getAttributeValue(ForgeMod.BLOCK_REACH.get());
-					double trueReach = reach == 0 ? 0 : reach + (player.isCreative() ? 0.5 : 0); // Copied from IForgePlayer#getReachDistance().
-					BlockHitResult result = getPlayerPOVHitResultForReach(level, player, trueReach, fluidMode);
-					reachDistance.addTransientModifier(giantModifier);
-					return result;
-				}
-			}
-		}
-		return null;
-	}
-
-	/*
-		[VANILLA COPY]
-		Copied from Item#getPlayerPOVHitResult(Level, Player, ClipContext.Fluid).
-		Uses a parameter for reach in assigning vec31 instead of using IForgePlayer#getReachDistance().
-	 */
-	private static BlockHitResult getPlayerPOVHitResultForReach(Level level, Player player, double reach, ClipContext.Fluid fluidClip) {
-		float f = player.getXRot();
-		float f1 = player.getYRot();
-		Vec3 vec3 = player.getEyePosition();
-		float f2 = Mth.cos(-f1 * ((float) Math.PI / 180.0F) - (float) Math.PI);
-		float f3 = Mth.sin(-f1 * ((float) Math.PI / 180.0F) - (float) Math.PI);
-		float f4 = -Mth.cos(-f * ((float) Math.PI / 180.0F));
-		float f5 = Mth.sin(-f * ((float) Math.PI / 180.0F));
-		float f6 = f3 * f4;
-		float f7 = f2 * f4;
-		Vec3 vec31 = vec3.add((double) f6 * reach, (double) f5 * reach, (double) f7 * reach);
-		return level.clip(new ClipContext(vec3, vec31, ClipContext.Block.OUTLINE, fluidClip, player));
-	}
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// chunk
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.level.block.MushroomBlock#canSurvive(BlockState, LevelReader, BlockPos)}  }<br>
-	 * [AFTER INVOKEINTERFACE {@link LevelReader#getRawBrightness(BlockPos, int)}]
+	 * {@link twilightforest.asm.transformers.chunk.ChunkStatusTaskTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.level.chunk.status.ChunkStatusTasks#generateSurface}
 	 */
-	public static int shroom(int o, LevelReader level, BlockPos pos) {
-		for (int x = -1; x <= 1; x++) {
-			for (int z = -1; z <= 1; z++) {
-				if (x == 0 && z == 0)
-					continue;
-				if (level.getBlockState(pos.offset(x, -1, z)).is(TFBlocks.TWILIGHT_PORTAL.get()))
-					return 0;
-			}
-		}
-		return o;
+	public static void chunkBlanketing(ChunkAccess chunkAccess, WorldGenRegion worldGenRegion) {
+		ChunkBlanketProcessors.chunkBlanketing(chunkAccess, worldGenRegion);
 	}
 
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// cloud
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.level.Level#isRainingAt(BlockPos)}<br>
-	 * [BEFORE ALOAD]
+	 * {@link twilightforest.asm.transformers.cloud.IsRainingAtTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.level.Level#isRainingAt(BlockPos)}
 	 */
-	public static boolean cloud(boolean isRaining, Level level, BlockPos pos) {
-		if (!isRaining && TFConfig.COMMON_CONFIG.cloudBlockPrecipitationDistanceCommon.get() > 0) {
-			for (int y = pos.getY(); y < pos.getY() + TFConfig.COMMON_CONFIG.cloudBlockPrecipitationDistanceCommon.get(); y++) {
+	public static boolean isRainingAt(boolean isRaining, Level level, BlockPos pos) {
+		if (!isRaining && TFConfig.commonCloudBlockPrecipitationDistance > 0) {
+			LevelChunk chunk = level.getChunkAt(pos);
+			for (int y = pos.getY(); y < pos.getY() + TFConfig.commonCloudBlockPrecipitationDistance; y++) {
 				BlockPos newPos = pos.atY(y);
-				BlockState state = level.getBlockState(newPos);
+				BlockState state = chunk.getBlockState(newPos);
 				if (state.getBlock() instanceof CloudBlock cloudBlock && cloudBlock.getCurrentPrecipitation(newPos, level, level.getRainLevel(1.0F)).getLeft() == Biome.Precipitation.RAIN) {
 					return true;
 				}
-				if (Heightmap.Types.MOTION_BLOCKING.isOpaque().test(level.getBlockState(newPos))) {
+				if (Heightmap.Types.MOTION_BLOCKING.isOpaque().test(state)) {
 					return false;
 				}
 			}
@@ -323,13 +195,143 @@ public class ASMHooks {
 		return isRaining;
 	}
 
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// conquered
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	/**
-	 * Injection Point:<br>
-	 * {@link net.minecraft.world.entity.decoration.LeashFenceKnotEntity#survives()}<br>
-	 * [BEFORE IRETURN]
+	 * {@link twilightforest.asm.transformers.conquered.StructureStartLoadStaticTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.level.levelgen.structure.StructureStart#loadStaticStart(StructurePieceSerializationContext, CompoundTag, long)}<br/>
+	 * Targets: {@link net.minecraft.world.level.levelgen.structure.StructureStart#StructureStart(Structure, ChunkPos, int, PiecesContainer)}
 	 */
-	public static boolean lead(boolean o, LeashFenceKnotEntity entity) {
+	public static StructureStart loadStaticStart(StructureStart start, PiecesContainer piecesContainer, CompoundTag nbt) {
+		if (start.getStructure() instanceof CustomStructureData s)
+			return s.forDeserialization(start.getStructure(), start.getChunkPos(), start.getReferences(), piecesContainer, nbt);
+		return start;
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// foliage
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.foliage.FoliageColorResolverTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.client.renderer.BiomeColors#FOLIAGE_COLOR_RESOLVER}
+	 */
+	public static int resolveFoliageColor(int o, Biome biome, double x, double z) {
+		return foliageColorHandler.get(o, biome, x, z);
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// lead
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.lead.LeashFenceKnotSurvivesTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.entity.decoration.LeashFenceKnotEntity#survives()}
+	 */
+	public static boolean leashFenceKnotSurvives(boolean o, LeashFenceKnotEntity entity) {
+		if (o)
+			return true; // Short-circuit to avoid an unnecessary #getBlockState call
 		BlockState fenceState = entity.level().getBlockState(entity.getPos());
-		return o || (fenceState.is(TFBlocks.WROUGHT_IRON_FENCE.get()) && fenceState.getValue(WroughtIronFenceBlock.POST) != WroughtIronFenceBlock.PostState.NONE);
+		return fenceState.is(TFBlocks.WROUGHT_IRON_FENCE) && fenceState.getValue(WroughtIronFenceBlock.POST) != WroughtIronFenceBlock.PostState.NONE;
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// map
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.map.ResolveNearestNonRandomSpreadMapStructureTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.level.chunk.ChunkGenerator#findNearestMapStructure(ServerLevel, HolderSet, BlockPos, int, boolean)}
+	 */
+	@Nullable
+	public static Pair<BlockPos, Holder<Structure>> resolveNearestNonRandomSpreadMapStructure(@Nullable Pair<BlockPos, Holder<Structure>> o, ServerLevel level, HolderSet<Structure> targetStructures, BlockPos pos, int searchRadius, boolean skipKnownStructures) {
+		return WorldUtil.findNearestMapLandmark(level, targetStructures, pos, searchRadius, skipKnownStructures).orElse(o);
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// multipart
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.multipart.ResolveEntitiesForRendereringTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.client.renderer.LevelRenderer#renderLevel(DeltaTracker, boolean, Camera, GameRenderer, LightTexture, Matrix4f, Matrix4f)}<br/>
+	 * [Targets: {@link net.minecraft.client.multiplayer.ClientLevel#entitiesForRendering}]
+	 */
+	public static Iterator<Entity> resolveEntitiesForRendering(Iterator<Entity> iter) {
+		return multipartEntityUtil.injectTFPartEntities(iter);
+	}
+
+	/**
+	 * {@link twilightforest.asm.transformers.multipart.ResolveEntityRendererTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.client.renderer.entity.EntityRenderDispatcher#getRenderer(Entity)}<br/>
+	 * Targets: {@link net.minecraft.client.renderer.entity.EntityRenderDispatcher#renderers}
+	 */
+	@Nullable
+	public static EntityRenderer<?, ?> resolveEntityRenderer(@Nullable EntityRenderer<?, ?> renderer, Entity entity) {
+		return multipartEntityUtil.tryLookupTFPartRenderer(renderer, entity);
+	}
+
+	/**
+	 * {@link twilightforest.asm.transformers.multipart.SendDirtytEntityDataTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.server.level.ServerEntity#sendDirtyEntityData}
+	 */
+	public static Entity sendDirtyEntityData(Entity entity) {
+		return multipartEntityUtil.sendDirtyMultipartEntityData(entity);
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// shroom
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.shroom.ModifySoilDecisionForMushroomBlockSurvivabilityTransformer}<p/>
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.level.block.MushroomBlock#canSurvive(BlockState, LevelReader, BlockPos)}<br/>
+	 * Targets: {@link BlockState#canSustainPlant(BlockGetter, BlockPos, Direction, BlockState)}
+	 */
+	public static TriState modifySoilDecisionForMushroomBlockSurvivability(TriState o, LevelReader level, BlockPos pos) {
+		if (!o.isDefault())
+			return o; // Short-circuit - We should not override non-default soil behaviour otherwise this would allow Mushrooms to survive on ALL blocks
+		for (int x = -1; x <= 1; x++) {
+			for (int z = -1; z <= 1; z++) {
+				if (x == 0 && z == 0)
+					continue;
+				if (level.getBlockState(pos.offset(x, -1, z)).is(TFBlocks.TWILIGHT_PORTAL))
+					return TriState.TRUE;
+			}
+		}
+		return o;
+	}
+
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// mob
+	// //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	/**
+	 * {@link twilightforest.asm.transformers.mob.PathFinderUnrestrainedByLeash}
+	 *
+	 * Injection Point:<br/>
+	 * {@link net.minecraft.world.entity.PathfinderMob#shouldStayCloseToLeashHolder()}<br/>
+	 * Targets: IRETURN
+	 */
+	public static boolean overrideStayCloseToHolder(boolean prior, PathfinderMob mob) {
+		return prior && !mob.hasData(TFDataAttachments.LEASH_PATHFINDER_OVERRIDE);
 	}
 }

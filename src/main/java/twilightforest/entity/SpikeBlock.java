@@ -3,11 +3,13 @@ package twilightforest.entity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerEntity;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.gameevent.GameEvent;
 import twilightforest.entity.monster.BlockChainGoblin;
 import twilightforest.init.TFSounds;
@@ -17,10 +19,10 @@ public class SpikeBlock extends BlockChainGoblin.MultipartGenericsAreDumb {
 
 	private boolean isCollideBlock;
 
-	@Override
-	public EntityDimensions getDimensions(Pose pos) {
-		return EntityDimensions.scalable(0.75F, 0.75F);
-	}
+	//@Override
+	//public EntityDimensions getDefaultDimensions(Pose pos) {
+	//	return EntityDimensions.scalable(0.75F, 0.75F);
+	//}
 
 	public SpikeBlock(Entity goblin) {
 		super(goblin);
@@ -48,7 +50,7 @@ public class SpikeBlock extends BlockChainGoblin.MultipartGenericsAreDumb {
 	}
 
 	@Override
-	public boolean hurt(DamageSource source, float amount) {
+	public boolean hurtServer(ServerLevel level, DamageSource source, float amount) {
 		return false;
 	}
 
@@ -68,12 +70,12 @@ public class SpikeBlock extends BlockChainGoblin.MultipartGenericsAreDumb {
 	}
 
 	@Override
-	public Packet<ClientGamePacketListener> getAddEntityPacket() {
+	public Packet<ClientGamePacketListener> getAddEntityPacket(ServerEntity entity) {
 		throw new UnsupportedOperationException();
 	}
 
 	@Override
-	protected void defineSynchedData() {
+	protected void defineSynchedData(SynchedEntityData.Builder builder) {
 	}
 
 	@Override

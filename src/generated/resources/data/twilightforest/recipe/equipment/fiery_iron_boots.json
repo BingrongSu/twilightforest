@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "equipment",
+  "group": "fiery_boots",
+  "ingredients": [
+    "minecraft:iron_boots",
+    "#twilightforest:fiery_vial",
+    "#twilightforest:fiery_vial",
+    "#twilightforest:fiery_vial",
+    "#twilightforest:fiery_vial"
+  ],
+  "result": {
+    "count": 1,
+    "id": "twilightforest:fiery_boots"
+  }
+}

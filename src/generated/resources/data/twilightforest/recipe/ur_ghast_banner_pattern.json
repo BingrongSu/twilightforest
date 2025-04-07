@@ -1,0 +1,12 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    "#c:paper",
+    "twilightforest:ur_ghast_trophy"
+  ],
+  "result": {
+    "count": 1,
+    "id": "twilightforest:ur_ghast_banner_pattern"
+  }
+}

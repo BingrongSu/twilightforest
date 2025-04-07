@@ -1,6 +1,7 @@
 package twilightforest.entity.monster;
 
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.tags.BiomeTags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -21,7 +22,7 @@ public abstract class BaseIceMob extends Monster {
 			this.setDeltaMovement(motion.x(), motion.y() * 0.6D, motion.z());
 		}
 		super.aiStep();
-		if (this.level().isClientSide()) {
+		if (this.level().isClientSide() && !this.isDeadOrDying()) {
 			// make snow particles
 			for (int i = 0; i < 3; i++) {
 				float px = (this.getRandom().nextFloat() - this.getRandom().nextFloat()) * 0.3F;
@@ -30,14 +31,19 @@ public abstract class BaseIceMob extends Monster {
 
 				this.level().addParticle(TFParticleType.SNOW_GUARDIAN.get(), this.xOld + px, this.yOld + py, this.zOld + pz, 0, 0, 0);
 				if (this.level().getBiome(this.blockPosition()).is(BiomeTags.SNOW_GOLEM_MELTS)) {
-					this.level().addParticle(ParticleTypes.CLOUD, this.xOld + px, this.yOld + py, this.zOld + pz, 0, 0.1F, 0);
-					this.level().addParticle(ParticleTypes.DRIPPING_WATER, this.xOld + px, this.yOld + py, this.zOld + pz, 0, 0, 0);
+					if (this.random.nextInt(4) == 0) this.level().addParticle(ParticleTypes.CLOUD, this.xOld + px, this.yOld + py, this.zOld + pz, 0, 0.1F, 0);
+					if (this.random.nextBoolean()) this.level().addParticle(ParticleTypes.FALLING_WATER, this.xOld + px, this.yOld + py, this.zOld + pz, 0, 0, 0);
 				}
 			}
 		}
-		if (this.level().getBiome(this.blockPosition()).is(BiomeTags.SNOW_GOLEM_MELTS) && this.tickCount % 20 == 0) {
+	}
+
+	@Override
+	protected void customServerAiStep(ServerLevel level) {
+		super.customServerAiStep(level);
+		if (this.tickCount % 20 == 0 && level.getBiome(this.blockPosition()).is(BiomeTags.SNOW_GOLEM_MELTS)) {
 			//BURN!!!
-			this.hurt(this.damageSources().onFire(), 1.0F);
+			this.hurtServer(level, this.damageSources().onFire(), 1.0F);
 		}
 	}
 

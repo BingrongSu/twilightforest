@@ -1,5 +1,6 @@
 package twilightforest.entity.ai.goal;
 
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
@@ -9,9 +10,9 @@ import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.Nullable;
 import twilightforest.entity.IBreathAttacker;
 
-import org.jetbrains.annotations.Nullable;
 import java.util.*;
 
 public class BreathAttackGoal<T extends Mob & IBreathAttacker> extends Goal {
@@ -64,9 +65,9 @@ public class BreathAttackGoal<T extends Mob & IBreathAttacker> extends Goal {
 	@Override
 	public boolean canContinueToUse() {
 		return this.durationLeft > 0 && this.entityHost.isAlive() && this.attackTarget.isAlive()
-				&& this.entityHost.distanceTo(this.attackTarget) <= this.breathRange
-				&& this.entityHost.getSensing().hasLineOfSight(this.attackTarget)
-				&& EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(EntitySelector.LIVING_ENTITY_STILL_ALIVE).test(attackTarget);
+			&& this.entityHost.distanceTo(this.attackTarget) <= this.breathRange
+			&& this.entityHost.getSensing().hasLineOfSight(this.attackTarget)
+			&& EntitySelector.NO_CREATIVE_OR_SPECTATOR.and(EntitySelector.LIVING_ENTITY_STILL_ALIVE).test(attackTarget);
 	}
 
 	/**
@@ -84,7 +85,7 @@ public class BreathAttackGoal<T extends Mob & IBreathAttacker> extends Goal {
 			// anyhoo, deal damage
 			Entity target = this.getHeadLookTarget();
 			if (target != null) {
-				this.entityHost.doBreathAttack(target);
+				this.entityHost.doBreathAttack((ServerLevel) this.entityHost.level(), target);
 				this.entityHost.gameEvent(GameEvent.PROJECTILE_SHOOT);
 			}
 		}

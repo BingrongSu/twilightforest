@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "chest_boat",
+  "ingredients": [
+    "twilightforest:canopy_boat",
+    "#c:chests/wooden"
+  ],
+  "result": {
+    "count": 1,
+    "id": "twilightforest:canopy_chest_boat"
+  }
+}

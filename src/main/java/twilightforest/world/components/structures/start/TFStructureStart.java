@@ -25,14 +25,14 @@ public class TFStructureStart extends StructureStart {
 		return tag;
 	}
 
-	public void load(CompoundTag nbt) {
+	public void loadFromTag(CompoundTag nbt) {
 		this.conquered = nbt.getBoolean("conquered");
 	}
 
 	public final void setConquered(boolean flag, LevelAccessor level) {
 		if (this.conquered != flag) {
 			ChunkPos chunkPos = this.getChunkPos();
-			level.getChunk(chunkPos.x, chunkPos.z).setUnsaved(true);
+			level.getChunk(chunkPos.x, chunkPos.z).markUnsaved();
 		}
 
 		this.conquered = flag;

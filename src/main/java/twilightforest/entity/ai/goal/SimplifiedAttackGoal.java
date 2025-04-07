@@ -1,5 +1,6 @@
 package twilightforest.entity.ai.goal;
 
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
@@ -17,7 +18,7 @@ public class SimplifiedAttackGoal extends Goal {
 	@Override
 	public boolean canUse() {
 		LivingEntity target = mob.getTarget();
-		return target != null && this.getAttackReachSqr(target) >= this.mob.distanceToSqr(target.getX(), target.getY(), target.getZ());
+		return target != null && this.mob.isWithinMeleeAttackRange(target);
 	}
 
 	@Override
@@ -45,22 +46,15 @@ public class SimplifiedAttackGoal extends Goal {
 				this.stop();
 				return;
 			}
-			double d0 = this.mob.getPerceivedTargetDistanceSquareForMeleeAttack(livingentity);
-			this.checkAndPerformAttack(livingentity, d0);
+			this.checkAndPerformAttack(livingentity);
 		}
 	}
 
-	protected void checkAndPerformAttack(LivingEntity entity, double distance) {
-		double d0 = this.getAttackReachSqr(entity);
-		if (distance <= d0) {
+	protected void checkAndPerformAttack(LivingEntity entity) {
+		if (this.attackTick <= 0 && this.mob.isWithinMeleeAttackRange(entity) && this.mob.hasLineOfSight(entity)) {
 			this.attackTick = this.adjustedTickDelay(20);
 			this.mob.swing(InteractionHand.MAIN_HAND);
-			this.mob.doHurtTarget(entity);
+			this.mob.doHurtTarget(getServerLevel(this.mob), entity);
 		}
-
-	}
-
-	protected double getAttackReachSqr(LivingEntity entity) {
-		return this.mob.getBbWidth() * 2.0F * this.mob.getBbWidth() * 2.0F + entity.getBbWidth();
 	}
 }
